@@ -1,7 +1,3 @@
-# CervicalCancer_sign_transfer_experiments.ipynb
-# Potrebne biblioteke: pandas, numpy, scikit-learn, matplotlib, torch
-# Instaliraj ako treba: pip install pandas numpy scikit-learn matplotlib torch
-
 import os
 import numpy as np
 import pandas as pd
@@ -34,7 +30,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ---------- UTIL: load & preprocess ----------
 def load_and_preprocess(path):
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, na_values='?', low_memory=False)
     # drop obviously irrelevant columns if exists (ID itd.)
     # identify feature columns (exclude our target label columns)
     target_names = list(TARGET_COLS.values())
@@ -258,6 +254,55 @@ if __name__ == "__main__":
     print(results_df.head(50))
     results_df.to_csv("sign_transfer_experiment_results.csv", index=False)
     # quick plot of baseline vs sign-transfer RMSE
+
+    comparative_results = results_df[[
+        'source',
+        'target',
+        'rmse_baseline',
+        'rmse_sign_transfer',
+        'rmse_mlp',
+        'relative_gain_percent'
+    ]].copy()
+
+    comparative_results.columns = [
+        'Source',
+        'Target',
+        'RMSE (Ridge Baseline)',
+        'RMSE (Sign-Transfer)',
+        'RMSE (MLP NN)',
+        'Relative Gain (%)'
+    ]
+
+    table_data = comparative_results.values
+    table_data_str = [[f"{v:.4f}" if isinstance(v, float) else v for v in row] for row in table_data]
+    for row in table_data_str:
+        row[-1] = f"{float(row[-1]):.2f}%"
+
+    fig,ax = plt.subplots(figsize=(10, len(table_data)*0.4 + 2))
+    ax.set_title("Uporedni rezultati performansi modela (RMSE i Relativna Dobit)", fontsize=14, pad=20)
+    ax.axis('tight')
+    ax.axis('off')
+
+    table = ax.table(cellText=table_data_str,
+                     colLabels=comparative_results.columns,
+                     cellLoc='center',
+                     loc='center',
+                     colColours=["lightgrey"] * len(comparative_results.columns)
+    )
+
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.2)
+    for (row, col), cell in table.get_celld().items():
+        if row == 0:
+            cell.set_fontsize(12)
+            cell.set_text_props(weight='bold')
+        elif col < 2:
+            cell.set_text_props(weight='bold')
+
+    plt.savefig("uporedna tabela rezultata.png", bbox_inches='tight')
+    plt.show()
+
     ind = np.arange(len(results_df))
     width = 0.35
     plt.figure(figsize=(10,6))
